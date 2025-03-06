@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005
+      author: your_name
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_orders_users
+                    references: users(tg_id)
+              - column:
+                  name: cashier_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_orders_cashiers
+                    references: cashiers(tg_id)
+              - column:
+                  name: courier_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_orders_couriers
+                    references: couriers(tg_id)
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cost
+                  type: decimal(10,2)
+                  constraints:
+                    nullable: false

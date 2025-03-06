@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007
+      author: I_MART0
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: payment_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: true

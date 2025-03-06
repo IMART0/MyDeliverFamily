@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008
+      author: I_MART0
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: points
+                  type: int

@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006
+      author: your_name
+      changes:
+        - createTable:
+            tableName: menu_items_in_order
+            columns:
+              - column:
+                  name: order_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_menu_items_in_order_orders
+                    references: orders(id)
+              - column:
+                  name: menu_item_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_menu_items_in_order_menu_items
+                    references: menu_items(id)
+              - column:
+                  name: quantity
+                  type: int
+                  constraints:
+                    nullable: false

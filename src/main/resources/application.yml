@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: MyDeliverFamily
+  datasource:
+    url: jdbc:postgresql://localhost:5432/MyDeliverFamily
+    username: postgres
+    password: 18092005
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+
+telegram:
+  myDeliverBot:
+    name: "MyDeliverBot"
+    token: "7863284024:AAEhKpBpfqYM_8hs_6Oc8y8mxqB34_nH0Ec"
+  cashier-bot:
+    name: "MyDeliver Cashier"
+    token: "7869424533:AAHX6QHBSkpBvOJ64nf5Ejo5nyXHANzgENc"
+  admin-bot:
+    name: "MyDeliver Admin"
+    token: "8111672797:AAHRtpwvy5x7QALxNoDKPXPKK-mp3-SsQCQ"
+  courier-bot:
+    name: "MyDeliver Courier"
+    token: "7678523236:AAHJ3cHB7SCIaEljFW3ccHNfiJDMv56CBCI"

@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/v1___create-tables/changeset-001-users.yml
+  - include:
+      file: db/changelog/v1___create-tables/changeset-002-cashiers.yml
+  - include:
+      file: db/changelog/v1___create-tables/changeset-003-couriers.yml
+  - include:
+      file: db/changelog/v1___create-tables/changeset-004-menu-items.yml
+  - include:
+      file: db/changelog/v1___create-tables/changeset-005-orders.yml
+  - include:
+      file: db/changelog/v1___create-tables/changeset-006-menu-items-in-orders.yml
+  - include:
+        file: db/changelog/v1___create-tables/changeset-007-add-payment-type.yml
+  - include:
+        file: db/changelog/v1___create-tables/changeset-008-add-user-points.yml
