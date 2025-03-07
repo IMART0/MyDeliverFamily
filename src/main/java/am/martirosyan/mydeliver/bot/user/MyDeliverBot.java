@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -25,14 +25,17 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class MyDeliverBot extends TelegramLongPollingBot {
     private final Logger logger = LoggerFactory.getLogger(MyDeliverBot.class);
 
     private final String NAME;
-    private final String TOKEN;
-    private UserState state = UserState.START;
+
+    private final Map<Long, UserState> userStates = new ConcurrentHashMap<>();
+    private final Map<Long, Integer> previousMessageId = new ConcurrentHashMap<>();
 
     @Autowired
     private UserService userService;
@@ -41,17 +44,12 @@ public class MyDeliverBot extends TelegramLongPollingBot {
     @Autowired
     private MenuItemService menuItemService;
 
-    private String phone;
-    private String name;
+    private final Map<Long, String> phones = new ConcurrentHashMap<>();
+    private final Map<Long, String> names = new ConcurrentHashMap<>();
 
     @Override
     public String getBotUsername() {
         return NAME;
-    }
-
-    @Override
-    public String getBotToken() {
-        return TOKEN;
     }
 
     @Override
@@ -61,13 +59,24 @@ public class MyDeliverBot extends TelegramLongPollingBot {
             Message message = update.getMessage();
 
             if (message.hasText() && message.getText().equals("/state")) {
-                sendMessage(message.getChatId(), state.toString());
+                sendMessage(message.getChatId(), getUserState(message.getChatId()).toString());
             }
 
             if (message.hasText() && message.getText().equals("/start")) {
-                state = UserState.START;
+                setUserState(message.getChatId(), UserState.START);
             }
         }
+        long chatId;
+
+        if (update.hasMessage()) {
+            chatId = update.getMessage().getChatId();
+        } else if (update.hasCallbackQuery()) {
+            chatId = update.getCallbackQuery().getMessage().getChatId();
+        } else {
+            return; // Игнорируем другие типы обновлений
+        }
+
+        UserState state = getUserState(chatId);
 
         switch (state) {
             case START -> {
@@ -89,12 +98,30 @@ public class MyDeliverBot extends TelegramLongPollingBot {
                     CallbackQuery callbackQuery = update.getCallbackQuery();
 
                     if (callbackQuery.getData().matches("CATEGORY_\\d+")) {
-                        long chatId = callbackQuery.getMessage().getChatId();
                         long categoryId = Long.parseLong(callbackQuery.getData().substring(9));
                         Category category = categoryService.getById(categoryId);
                         if (category != null) {
                             sendCategoryMenu(chatId, categoryId, 0);
-                            state = UserState.SELECT_CATEGORY;
+                            setUserState(chatId, UserState.SELECT_CATEGORY);
+                        }
+                    }
+                }
+            }
+            case SELECT_CATEGORY -> {
+                if (update.hasMessage())
+                    handleMainMenu(update.getMessage());
+                if (update.hasCallbackQuery()) {
+                    CallbackQuery callbackQuery = update.getCallbackQuery();
+                    String data = callbackQuery.getData();
+                    if (data.matches("CATEGORY_\\d+_PAGE_\\d+")) {
+                        long categoryId = Long.parseLong(data.substring(9, data.indexOf("_PAGE_")));
+                        int page = Integer.parseInt(data.substring(data.indexOf("_PAGE_") + 6));
+                        sendCategoryMenu(callbackQuery.getMessage().getChatId(), categoryId, page);
+                    } else if (data.matches("MENUITEM_\\d+")) {
+                        long menuItemId = Long.parseLong(data.substring(9));
+                        MenuItem menuItem = menuItemService.getById(menuItemId);
+                        if (menuItem != null) {
+                            sendMessage(callbackQuery.getMessage().getChatId(), menuItem.getName());
                         }
                     }
                 }
@@ -107,9 +134,9 @@ public class MyDeliverBot extends TelegramLongPollingBot {
         sendMessage(chatId, UserMessage.WELCOME_MESSAGE);
         if (!userService.isRegistered(chatId)) {
             sendRequestPhoneMessage(chatId);
-            state = UserState.REGISTRATION_PHONE;
+            setUserState(chatId, UserState.REGISTRATION_PHONE);
         } else {
-            state = UserState.MAIN_MENU;
+            setUserState(chatId, UserState.MAIN_MENU);
             sendMainMenuKeyboardMessage(chatId);
         }
 
@@ -118,10 +145,15 @@ public class MyDeliverBot extends TelegramLongPollingBot {
     private void handleContact(Message message) {
         long chatId = message.getChatId();
         if (message.hasContact() && message.getContact().getUserId().equals(chatId)) {
-            phone = message.getContact().getPhoneNumber();
-            name = message.getContact().getFirstName();
+            phones.put(
+                    chatId,
+                    message.getContact().getPhoneNumber());
+            names.put(
+                    chatId,
+                    message.getContact().getFirstName()
+            );
             removeKeyboard(chatId, UserMessage.BIRTHDAY_REQUEST_MESSAGE);
-            state = UserState.REGISTRATION_BIRTHDATE;
+            setUserState(chatId, UserState.REGISTRATION_BIRTHDATE);
         } else {
             sendRequestPhoneMessage(chatId);
         }
@@ -133,10 +165,14 @@ public class MyDeliverBot extends TelegramLongPollingBot {
         String birthDate = message.getText();
 
         if (birthDate.matches("\\d{2}\\.\\d{2}\\.\\d{4}") &&
-                userService.register(chatId, name, phone, birthDate) != null) {
+                userService.register(chatId, names.get(chatId),
+                        phones.get(chatId), birthDate) != null) {
             sendMessage(chatId, UserMessage.REGISTRATION_SUCCESS_MESSAGE);
-            state = UserState.MAIN_MENU;
+            setUserState(chatId, UserState.MAIN_MENU);
             sendMainMenuKeyboardMessage(chatId);
+
+            names.remove(chatId);
+            phones.remove(chatId);
         } else {
             sendMessage(chatId, UserMessage.MISSING_BIRTHDAY_MESSAGE);
         }
@@ -147,6 +183,7 @@ public class MyDeliverBot extends TelegramLongPollingBot {
             String messageText = message.getText();
             if (messageText.equals("🍔 Сделать заказ")) {
                 sendCategoriesInlineKeyboard(message.getChatId());
+                setUserState(message.getChatId(), UserState.MAIN_MENU);
             }
         }
     }
@@ -187,9 +224,7 @@ public class MyDeliverBot extends TelegramLongPollingBot {
         int totalPages = (int) Math.ceil((double) menuItems.size() / pageSize);
         page = Math.max(0, Math.min(page, totalPages - 1)); // Ограничиваем границы страниц
 
-        int start = page * pageSize;
-        int end = Math.min(start + pageSize, menuItems.size());
-        List<MenuItem> pageItems = menuItems.subList(start, end);
+        List<MenuItem> pageItems = menuItemService.getByCategoryId(categoryId, page);
 
         InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
@@ -203,7 +238,7 @@ public class MyDeliverBot extends TelegramLongPollingBot {
 
         // Кнопки для пагинации
         List<InlineKeyboardButton> paginationRow = createPaginationButtons(
-                "CATEGORY_PAGE_",
+                "CATEGORY_%s_PAGE_".formatted(categoryId),
                 page,
                 totalPages
         );
@@ -211,9 +246,10 @@ public class MyDeliverBot extends TelegramLongPollingBot {
         rows.add(paginationRow);
         keyboard.setKeyboard(rows);
 
-        SendMessage message = new SendMessage();
+        EditMessageText message = new EditMessageText();
         message.setChatId(chatId);
         message.setText("Выберите блюдо:");
+        message.setMessageId(previousMessageId.get(chatId));
         message.setReplyMarkup(keyboard);
 
         executeMessage(message);
@@ -300,21 +336,32 @@ public class MyDeliverBot extends TelegramLongPollingBot {
         executeMessage(message);
     }
 
-    // Метод для удаления сообщения
-    private void deleteMessage(long chatId, int messageId) {
-        try {
-            DeleteMessage deleteMessage = new DeleteMessage();
-            deleteMessage.setChatId(chatId);
-            deleteMessage.setMessageId(messageId);
-            execute(deleteMessage); // Удаляем сообщение
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    private UserState getUserState(long chatId) {
+        return userStates.getOrDefault(chatId, UserState.START);
     }
+
+    private void setUserState(long chatId, UserState state) {
+        userStates.put(chatId, state);
+    }
+
 
 
     private void executeMessage(SendMessage message) {
         try {
+            previousMessageId.put(
+                    Long.valueOf(message.getChatId()),
+                    execute(message).getMessageId()
+            );
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    private void executeMessage(EditMessageText message) {
+        logger.info("Editing message: chatId={}, messageId={}", message.getChatId(), message.getMessageId());
+
+        try {
+
             execute(message);
         } catch (Exception e) {
             logger.error(e.getMessage());

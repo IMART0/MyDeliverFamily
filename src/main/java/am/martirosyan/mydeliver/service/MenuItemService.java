@@ -23,4 +23,8 @@ public class MenuItemService {
         return menuItemRepository.findByCategoryId(categoryId);
     }
 
+    public MenuItem getById(Long id) {
+        return menuItemRepository.findById(id).orElse(null);
+    }
+
 }
