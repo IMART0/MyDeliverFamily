@@ -15,3 +15,9 @@ databaseChangeLog:
         file: db/changelog/v1___create-tables/changeset-007-add-payment-type.yml
   - include:
         file: db/changelog/v1___create-tables/changeset-008-add-user-points.yml
+  - include:
+        file: db/changelog/v1___create-tables/changeset-009-add-user-birthday.yml
+  - include:
+        file: db/changelog/v1___create-tables/changeset-010-categories.yml
+  - include:
+        file: db/changelog/v1___create-tables/changeset-011-add-category.yml

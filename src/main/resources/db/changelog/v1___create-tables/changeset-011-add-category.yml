@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011
+      author: I_MART0
+      changes:
+        - addColumn:
+            tableName: menu_items
+            columns:
+              - column:
+                  name: category_id
+                  type: bigint
