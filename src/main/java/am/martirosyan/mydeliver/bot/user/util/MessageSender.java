@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -54,13 +56,27 @@ public class MessageSender {
 
         List<MenuItem> pageItems = menuItemService.getByCategoryId(categoryId, page);
 
-        EditMessageText message = new EditMessageText();
-        message.setChatId(chatId);
-        message.setText("Выберите блюдо:");
-        message.setMessageId(previousMessageId.get(chatId));
-        message.setReplyMarkup(UserKeyboardFactory.menuItemInlineKeyboard(pageItems, categoryId, page, totalPages));
+        Message previousMessage = new Message();
+        previousMessage.setMessageId(getPreviousMessageId(chatId));
 
-        editMessage(message);
+        if (!previousMessage.hasPhoto()) {
+            EditMessageText message = new EditMessageText();
+            message.setChatId(chatId);
+            message.setText("Выберите блюдо:");
+            message.setMessageId(getPreviousMessageId(chatId));
+            message.setReplyMarkup(UserKeyboardFactory.menuItemInlineKeyboard(pageItems, categoryId, page, totalPages));
+
+            editMessage(message);
+        }
+        else {
+            deletePreviousMessage(chatId);
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Выберите блюдо:");
+            message.setReplyMarkup(UserKeyboardFactory.menuItemInlineKeyboard(pageItems, categoryId, page, totalPages));
+
+            executeMessage(message);
+        }
     }
 
     public void sendMenuItemDetails(long chatId, MenuItem menuItem, UserCart userCart) {
@@ -78,10 +94,35 @@ public class MessageSender {
         sendPhoto.setParseMode("Markdown");
 
         // Добавляем кнопку "Добавить в корзину"
-        sendPhoto.setReplyMarkup(UserKeyboardFactory.addToCartKeyboard(menuItem.getId(),
-                userCart.getItemCount(menuItem.getId())));
+        sendPhoto.setReplyMarkup(UserKeyboardFactory.addToCartKeyboard(
+                menuItem.getId(),
+                menuItem.getCategoryId(),
+                userCart.getItemCount(menuItem.getId())
+        ));
 
         executeMessage(sendPhoto);
+
+    }
+
+    public void editMenuItemCount(long chatId, MenuItem menuItem, UserCart userCart) {
+        EditMessageCaption editCaption = new EditMessageCaption();
+        editCaption.setChatId(chatId);
+        // Форматируем текст в Markdown
+        String text = String.format(
+                "*%s*\n\n_%s_\n\nЦена: *%.2f₽*",
+                menuItem.getName(), menuItem.getDescription(), menuItem.getPrice()
+        );
+        editCaption.setCaption(text);
+        editCaption.setParseMode("Markdown");
+        editCaption.setMessageId(getPreviousMessageId(chatId));
+        editCaption.setReplyMarkup(UserKeyboardFactory.addToCartKeyboard(menuItem.getId(),
+                menuItem.getCategoryId(), userCart.getItemCount(menuItem.getId())));
+
+        try {
+            bot.execute(editCaption);
+        } catch (TelegramApiException e) {
+            logger.error("Ошибка при изменении описания: {}", e.getMessage());
+        }
 
     }
 

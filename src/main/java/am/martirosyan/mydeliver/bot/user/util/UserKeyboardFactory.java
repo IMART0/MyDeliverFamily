@@ -38,34 +38,39 @@ public class UserKeyboardFactory {
         }
 
         // Кнопки для пагинации
-        List<InlineKeyboardButton> paginationRow = createPaginationButtons(
-                "CATEGORY_%s_PAGE_".formatted(categoryId),
+        List<List<InlineKeyboardButton>> paginationRows = createMenuItemsPaginationButtons(
+                categoryId,
                 page,
                 totalPages
         );
 
-        rows.add(paginationRow);
+        rows.addAll(paginationRows);
         keyboard.setKeyboard(rows);
 
         return keyboard;
     }
 
-    private static List<InlineKeyboardButton> createPaginationButtons(String callback, int page, int totalPages) {
+    private static List<List<InlineKeyboardButton>> createMenuItemsPaginationButtons(long categoryId, int page, int totalPages) {
         List<InlineKeyboardButton> paginationRow = new ArrayList<>();
 
         InlineKeyboardButton prevButton = new InlineKeyboardButton("⬅️");
-        prevButton.setCallbackData(callback + (page - 1));
+        prevButton.setCallbackData("CATEGORY_%s_PAGE_".formatted(categoryId) + (page - 1));
 
         InlineKeyboardButton pageIndicator = new InlineKeyboardButton((page + 1) + "/" + totalPages);
-        pageIndicator.setCallbackData(callback + "INFO");
+        pageIndicator.setCallbackData("CATEGORY_%s_PAGE_".formatted(categoryId) + "INFO");
 
         InlineKeyboardButton nextButton = new InlineKeyboardButton("➡️");
-        nextButton.setCallbackData(callback + (page + 1));
+        nextButton.setCallbackData("CATEGORY_%s_PAGE_".formatted(categoryId) + (page + 1));
 
         if (page > 0) paginationRow.add(prevButton);
         paginationRow.add(pageIndicator);
         if (page < totalPages - 1) paginationRow.add(nextButton);
-        return paginationRow;
+
+        InlineKeyboardButton backButton = new InlineKeyboardButton("⬅️ Назад");
+        backButton.setCallbackData("CATEGORIES");
+
+        List<InlineKeyboardButton> backRow = List.of(backButton);
+        return List.of(paginationRow, backRow);
     }
 
     public static InlineKeyboardMarkup categoryInlineKeyboard(List<Category> categories) {
@@ -78,13 +83,14 @@ public class UserKeyboardFactory {
                     Category category = categories.remove(0);
                     InlineKeyboardButton button = new InlineKeyboardButton();
                     button.setText(category.getName());
-                    button.setCallbackData("CATEGORY_" + category.getId());
+                    button.setCallbackData("CATEGORY_" + category.getId() + "_PAGE_0");
 
                     row.add(button);
                 }
             }
             rows.add(row);
         }
+
         keyboardMarkup.setKeyboard(rows);
         return keyboardMarkup;
     }
@@ -110,11 +116,11 @@ public class UserKeyboardFactory {
         return keyboardMarkup;
     }
 
-    public static InlineKeyboardMarkup addToCartKeyboard(long menuItemId, int quantity) {
+    public static InlineKeyboardMarkup addToCartKeyboard(long menuItemId, long categoryId, int quantity) {
         InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
 
         InlineKeyboardButton reduceButton = new InlineKeyboardButton("➖");
-        reduceButton.setCallbackData("REDUCE_" + menuItemId);
+        reduceButton.setCallbackData("DECREASE_" + menuItemId);
 
         InlineKeyboardButton quantityButton = new InlineKeyboardButton(String.valueOf(quantity));
         quantityButton.setCallbackData("INFO");
@@ -122,19 +128,14 @@ public class UserKeyboardFactory {
         InlineKeyboardButton increaseButton = new InlineKeyboardButton("➕");
         increaseButton.setCallbackData("INCREASE_" + menuItemId);
 
-        InlineKeyboardButton addButton = new InlineKeyboardButton("\uD83D\uDED2 Добавить в корзину \uD83D\uDED2");
-        addButton.setCallbackData("ADD_TO_CART_%s_QUANTITY_%s".formatted(menuItemId, quantity));
-
-        InlineKeyboardButton removeButton = new InlineKeyboardButton("❌ Убрать из корзины ❌");
-        removeButton.setCallbackData("REMOVE_FROM_CART_" + menuItemId);
+        InlineKeyboardButton backButton = new InlineKeyboardButton("⬅️ Назад");
+        backButton.setCallbackData("CATEGORY_%s_PAGE_0".formatted(categoryId));
 
         List<InlineKeyboardButton> firstRow = List.of(reduceButton, quantityButton, increaseButton);
 
-        List<InlineKeyboardButton> secondRow = List.of(addButton);
+        List<InlineKeyboardButton> secondRow = List.of(backButton);
 
-        List<InlineKeyboardButton> thirdRow = List.of(removeButton);
-
-        keyboard.setKeyboard(List.of(firstRow, secondRow, thirdRow));
+        keyboard.setKeyboard(List.of(firstRow, secondRow));
         return keyboard;
     }
 }

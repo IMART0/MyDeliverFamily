@@ -17,4 +17,16 @@ public class UserCart {
         }
         return menuItems.get(id);
     }
+
+    public void increaseQuantity(long menuItemId) {
+        menuItems.put(menuItemId, menuItems.get(menuItemId) + 1);
+    }
+
+    public boolean decreaseQuantity(long menuItemId) {
+        if (menuItems.get(menuItemId) > 0) {
+            menuItems.put(menuItemId, menuItems.get(menuItemId) - 1);
+            return true;
+        }
+        return false;
+    }
 }
