@@ -1,6 +1,10 @@
-package am.martirosyan.mydeliver.bot.user;
+package am.martirosyan.mydeliver.bot.user.util;
 
 public class UserMessage {
+    public final static String ERROR_MESSAGE = """
+            ❌ Неверный формат запроса, повторите снова
+            """;
+
     public final static String WELCOME_MESSAGE = """
             🎉 Добро пожаловать в MyDeliver! 🍔\s
             🚀Здесь вы можете заказать доставку еды из любимых ресторанов города🏙️🍕

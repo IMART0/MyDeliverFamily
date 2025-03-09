@@ -5,6 +5,9 @@ import am.martirosyan.mydeliver.bot.user.MyDeliverBot;
 import am.martirosyan.mydeliver.bot.MyDeliverCashierBot;
 import am.martirosyan.mydeliver.bot.MyDeliverCourierBot;
 import am.martirosyan.mydeliver.properties.BotsProperties;
+import am.martirosyan.mydeliver.service.CategoryService;
+import am.martirosyan.mydeliver.service.MenuItemService;
+import am.martirosyan.mydeliver.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +18,11 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @Configuration
 @RequiredArgsConstructor
 public class BotsConfig {
-    private final BotsProperties botProperties;
+
+    @Bean
+    public BotsProperties botProperties() {
+        return new BotsProperties();
+    }
 
     @Bean
     public TelegramBotsApi telegramBotsApi(MyDeliverBot myDeliverBot,
@@ -31,34 +38,37 @@ public class BotsConfig {
     }
 
     @Bean
-    public MyDeliverBot myDeliverBot() {
+    public MyDeliverBot myDeliverBot(UserService userService, CategoryService categoryService, MenuItemService menuItemService) {
         return new MyDeliverBot(
-                botProperties.getMyDeliverBot().getName(),
-                botProperties.getMyDeliverBot().getToken()
+                botProperties().getMyDeliverBot().getName(),
+                botProperties().getMyDeliverBot().getToken(),
+                userService,
+                categoryService,
+                menuItemService
                 );
     }
 
     @Bean
     public MyDeliverCashierBot cashierBot() {
         return new MyDeliverCashierBot(
-                botProperties.getCashierBot().getName(),
-                botProperties.getCashierBot().getToken()
+                botProperties().getCashierBot().getName(),
+                botProperties().getCashierBot().getToken()
                 );
     }
 
     @Bean
     public MyDeliverAdminBot adminBot() {
         return new MyDeliverAdminBot(
-                botProperties.getAdminBot().getName(),
-                botProperties.getAdminBot().getToken()
+                botProperties().getAdminBot().getName(),
+                botProperties().getAdminBot().getToken()
                 );
     }
 
     @Bean
     public MyDeliverCourierBot courierBot() {
         return new MyDeliverCourierBot(
-                botProperties.getCourierBot().getName(),
-                botProperties.getCourierBot().getToken()
+                botProperties().getCourierBot().getName(),
+                botProperties().getCourierBot().getToken()
                 );
     }
 }

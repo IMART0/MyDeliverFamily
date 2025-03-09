@@ -1,4 +1,4 @@
-package am.martirosyan.mydeliver.bot.user;
+package am.martirosyan.mydeliver.bot.user.util;
 
 public enum UserState {
     START,
